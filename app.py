@@ -1,45 +1,52 @@
 import streamlit as st
 import pandas as pd
 
-# -------------------------
-# https://docs.google.com/spreadsheets/d/1-PZWQ4qddJag0_vb1dcvf9x29-rbFsnYhsdPsx6Hp6E/edit?usp=sharing
-# -------------------------
+# ---------------- CONFIG ----------------
+
+st.set_page_config(
+    page_title="PUT Result 2026",
+    page_icon="🎓",
+    layout="centered"
+)
 
 SHEET_ID = "1-PZWQ4qddJag0_vb1dcvf9x29-rbFsnYhsdPsx6Hp6E"
 
-sheet_urls = {
-    "BBA":
-    f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=BBA",
-
-    "B.COM":
-    f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=B.COM",
+# Sheet names exactly as in Google Sheet
+COURSES = {
+    "BBA": "BBA 2ND.SEM",
+    "B.COM": "B.COM 2ND.SEM"
 }
 
-st.set_page_config(page_title="PUT Result", layout="centered")
+# ------------- LOAD DATA ----------------
+
+@st.cache_data
+def load_data(sheet_name):
+    url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={sheet_name}"
+    df = pd.read_csv(url)
+    df = df.dropna(subset=["NAME"])
+    return df
+
+# ---------------- HEADER ----------------
+
+# Uncomment if banner available
+# st.image("banner.png", use_container_width=True)
 
 st.title("PUT EXAM RESULT 2026")
 
-# -------------------------
-# COURSE
-# -------------------------
+# ---------------- COURSE ----------------
 
 course = st.selectbox(
-    "Course",
-    list(sheet_urls.keys())
+    "Select Course",
+    list(COURSES.keys())
 )
 
-df = pd.read_csv(sheet_urls[course])
+df = load_data(COURSES[course])
 
-# Remove empty rows
-df = df.dropna(subset=["NAME"])
-
-# -------------------------
-# STUDENT
-# -------------------------
+# ---------------- STUDENT ----------------
 
 student = st.selectbox(
-    "Student",
-    df["NAME"].tolist()
+    "Select Student",
+    sorted(df["NAME"].tolist())
 )
 
 row = df[df["NAME"] == student].iloc[0]
@@ -63,24 +70,49 @@ with col2:
 
 st.divider()
 
-st.subheader("Marks")
+st.subheader("Subject-wise Marks")
 
-# Subject columns start after Father's Name
-subject_columns = df.columns[4:]
+subjects = df.columns[4:]
 
-marks = []
+total = 0
+count = 0
 
-for subject in subject_columns:
-    marks.append({
+marks_table = []
+
+for subject in subjects:
+
+    mark = row[subject]
+
+    if str(mark).strip().upper() == "AB":
+        display = "AB"
+    else:
+        try:
+            total += float(mark)
+            count += 1
+            display = int(mark)
+        except:
+            display = mark
+
+    marks_table.append({
         "Subject": subject,
-        "Marks": row[subject]
+        "Marks": display
     })
 
-marks_df = pd.DataFrame(marks)
+marks_df = pd.DataFrame(marks_table)
 
-st.table(marks_df)
+st.dataframe(
+    marks_df,
+    use_container_width=True,
+    hide_index=True
+)
 
 st.divider()
+
+st.metric("Total Marks", total)
+
+if count > 0:
+    percentage = total / count
+    st.metric("Average", f"{percentage:.2f}")
 
 if st.button("🖨 Print Result"):
     st.markdown(
@@ -89,5 +121,5 @@ if st.button("🖨 Print Result"):
         window.print();
         </script>
         """,
-        unsafe_allow_html=True,
+        unsafe_allow_html=True
     )
