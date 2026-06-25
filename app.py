@@ -61,7 +61,9 @@ except Exception as e:
 
 student = st.selectbox(
     "Select Student",
-    sorted(df["NAME"].tolist())
+    sorted(df["NAME"].tolist()),
+    index=None,
+    placeholder="Select Student"
 )
 
 row = df[df["NAME"] == student].iloc[0]
